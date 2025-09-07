@@ -1,7 +1,7 @@
 {
-  "name": "",
-  "short_name": "",
-  "description": "",
+  "name": "E-Waste Recycler",
+  "short_name": "E-Waste",
+  "description": "An application for scheduling e-waste pickup and recycling.",
   "start_url": "/",
   "scope": "/",
   "icons": [
