@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/features/auth/AuthContext';
 
 interface PickupFormProps {
   onPickupRequested: () => void;
@@ -12,10 +13,8 @@ interface PickupFormProps {
 
 export function PickupForm({ onPickupRequested }: PickupFormProps) {
   const { toast } = useToast();
-  const [name, setName] = React.useState('');
+  const { user, refreshUser } = useAuth();
   const [address, setAddress] = React.useState('');
-  const [email, setEmail] = React.useState('');
-  const [phone, setPhone] = React.useState('');
   const [itemsDescription, setItemsDescription] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -30,10 +29,7 @@ export function PickupForm({ onPickupRequested }: PickupFormProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name,
           address,
-          email,
-          phone,
           items_description: itemsDescription,
         }),
       });
@@ -44,17 +40,15 @@ export function PickupForm({ onPickupRequested }: PickupFormProps) {
 
       toast({
         title: 'Success!',
-        description: 'Your pickup request has been submitted.',
+        description: 'Your pickup request has been submitted. You earned 10 points!',
       });
 
       // Clear form
-      setName('');
       setAddress('');
-      setEmail('');
-      setPhone('');
       setItemsDescription('');
       
       onPickupRequested();
+      await refreshUser(); // Refresh user to show updated points
     } catch (error) {
       console.error(error);
       toast({
@@ -73,20 +67,16 @@ export function PickupForm({ onPickupRequested }: PickupFormProps) {
         <CardContent className="pt-6">
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="John Doe" required />
+              <Label>Name</Label>
+              <Input value={user?.name || ''} disabled />
+            </div>
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input value={user?.email || ''} disabled />
             </div>
             <div className="space-y-2">
               <Label htmlFor="address">Pickup Address</Label>
               <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="123 Main St, Anytown, USA" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="john.doe@example.com" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number (Optional)</Label>
-              <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(123) 456-7890" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="items">E-Waste Items</Label>

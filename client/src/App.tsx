@@ -1,39 +1,49 @@
 import * as React from 'react';
-import { PickupList } from '@/features/pickups/PickupList';
-import { PickupForm } from '@/features/pickups/PickupForm';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
+import { AuthProvider, useAuth } from '@/features/auth/AuthContext';
+import { HomePage } from '@/pages/HomePage';
+import { LoginPage } from '@/pages/LoginPage';
+import { SignupPage } from '@/pages/SignupPage';
+import { DashboardPage } from '@/pages/DashboardPage';
+import { Navbar } from '@/components/Navbar';
+import { AIDetectionPage } from '@/pages/AIDetectionPage';
 
 function App() {
-  const [refreshKey, setRefreshKey] = React.useState(0);
+  return (
+    <AuthProvider>
+      <Router>
+        <div className="min-h-screen bg-background">
+          <Navbar />
+          <main>
+            <AppRoutes />
+          </main>
+          <Toaster />
+        </div>
+      </Router>
+    </AuthProvider>
+  );
+}
 
-  const handlePickupRequested = () => {
-    setRefreshKey(prevKey => prevKey + 1);
-  };
+function AppRoutes() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="bg-primary text-primary-foreground">
-        <div className="container mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold">E-Waste Recycler</h1>
-        </div>
-      </header>
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid gap-8 md:grid-cols-2">
-          <div>
-            <h2 className="text-3xl font-bold mb-4">Schedule a Pickup</h2>
-            <p className="text-muted-foreground mb-6">
-              Fill out the form below to schedule a pickup for your electronic waste.
-            </p>
-            <PickupForm onPickupRequested={handlePickupRequested} />
-          </div>
-          <div>
-            <h2 className="text-3xl font-bold mb-4">Current Pickups</h2>
-            <PickupList key={refreshKey} />
-          </div>
-        </div>
-      </main>
-      <Toaster />
-    </div>
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/dashboard" />} />
+      <Route path="/signup" element={!user ? <SignupPage /> : <Navigate to="/dashboard" />} />
+      <Route path="/dashboard" element={user ? <DashboardPage /> : <Navigate to="/login" />} />
+      <Route path="/ai-detection" element={user ? <AIDetectionPage /> : <Navigate to="/login" />} />
+    </Routes>
   );
 }
 

@@ -28,6 +28,10 @@ export function PickupList() {
       try {
         const response = await fetch('/api/pickups');
         if (!response.ok) {
+          if (response.status === 401) {
+            setError("You need to be logged in to see your pickups.");
+            return;
+          }
           throw new Error('Failed to fetch pickups');
         }
         const data = await response.json();
@@ -47,7 +51,7 @@ export function PickupList() {
   }
 
   if (error) {
-    return <p className="text-destructive">Error: {error}</p>;
+    return <p className="text-destructive">{error}</p>;
   }
 
   return (
@@ -55,7 +59,7 @@ export function PickupList() {
       <CardHeader>
         <CardTitle>Pickup Schedule</CardTitle>
         <CardDescription>
-          Here are the currently scheduled e-waste pickups.
+          Here are your scheduled e-waste pickups.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -65,16 +69,15 @@ export function PickupList() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
                 <TableHead>Address</TableHead>
                 <TableHead>Items</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Date</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {pickups.map((pickup) => (
                 <TableRow key={pickup.id}>
-                  <TableCell>{pickup.name}</TableCell>
                   <TableCell>{pickup.address}</TableCell>
                   <TableCell>{pickup.items_description}</TableCell>
                   <TableCell>
@@ -82,6 +85,7 @@ export function PickupList() {
                       {pickup.status}
                     </Badge>
                   </TableCell>
+                  <TableCell>{new Date(pickup.requested_at).toLocaleDateString()}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
