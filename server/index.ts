@@ -182,7 +182,177 @@ app.post('/api/detect', authenticateToken, upload.single('ewasteImage'), (req, r
 
   setTimeout(() => {
     res.status(200).json({ message: `AI detected: ${detectedItem}.` });
-  }, 1500); // Simulate processing time
+  }, 1500);
+});
+
+// --- ROADMAP ROUTES ---
+
+app.get('/api/roadmap', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const batches = await db.selectFrom('roadmap_batches')
+      .where('user_id', '=', req.userId!)
+      .selectAll()
+      .orderBy('created_at', 'desc')
+      .execute();
+    res.json(batches);
+  } catch (err) {
+    console.error('Failed to fetch batches:', err);
+    res.status(500).json({ message: 'Failed to fetch batches' });
+  }
+});
+
+app.get('/api/roadmap/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const batchId = parseInt(req.params.id);
+
+    const batch = await db.selectFrom('roadmap_batches')
+      .where('id', '=', batchId)
+      .where('user_id', '=', req.userId!)
+      .selectAll()
+      .executeTakeFirst();
+
+    if (!batch) {
+      res.status(404).json({ message: 'Batch not found' });
+      return;
+    }
+
+    const items = await db.selectFrom('roadmap_items')
+      .where('batch_id', '=', batchId)
+      .selectAll()
+      .execute();
+
+    const history = await db.selectFrom('roadmap_history')
+      .where('batch_id', '=', batchId)
+      .selectAll()
+      .orderBy('changed_at', 'desc')
+      .execute();
+
+    res.json({ ...batch, items, history });
+  } catch (err) {
+    console.error('Failed to fetch batch details:', err);
+    res.status(500).json({ message: 'Failed to fetch batch details' });
+  }
+});
+
+app.post('/api/roadmap', authenticateToken, async (req: AuthRequest, res) => {
+  const { source, total_weight, notes, items } = req.body;
+  const userId = req.userId;
+
+  if (!source || !userId || !items || items.length === 0) {
+    res.status(400).json({ message: 'Missing required fields' });
+    return;
+  }
+
+  try {
+    const user = await db.selectFrom('users')
+      .where('id', '=', userId)
+      .select('name')
+      .executeTakeFirst();
+
+    const batchId = `EW-${Date.now().toString().slice(-8)}`;
+    const itemCount = items.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0);
+
+    const newBatch = await db
+      .insertInto('roadmap_batches')
+      .values({
+        batch_id: batchId,
+        user_id: userId,
+        source,
+        item_count: itemCount,
+        total_weight: total_weight || 0,
+        stage: 'incoming',
+        assigned_date: new Date().toISOString(),
+        notes: notes || '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .returningAll()
+      .executeTakeFirstOrThrow();
+
+    for (const item of items) {
+      await db.insertInto('roadmap_items')
+        .values({
+          batch_id: newBatch.id,
+          item_type: item.item_type,
+          quantity: item.quantity,
+          condition: item.condition,
+        })
+        .execute();
+    }
+
+    await db.insertInto('roadmap_history')
+      .values({
+        batch_id: newBatch.id,
+        from_stage: '',
+        to_stage: 'incoming',
+        changed_by: user?.name || 'System',
+        changed_at: new Date().toISOString(),
+        notes: 'Batch created',
+      })
+      .execute();
+
+    res.status(201).json(newBatch);
+  } catch (err) {
+    console.error('Failed to create batch:', err);
+    res.status(500).json({ message: 'Failed to create batch' });
+  }
+});
+
+app.put('/api/roadmap/:id', authenticateToken, async (req: AuthRequest, res) => {
+  const batchId = parseInt(req.params.id);
+  const { stage, notes } = req.body;
+  const userId = req.userId;
+
+  if (!stage) {
+    res.status(400).json({ message: 'Stage is required' });
+    return;
+  }
+
+  try {
+    const batch = await db.selectFrom('roadmap_batches')
+      .where('id', '=', batchId)
+      .where('user_id', '=', userId!)
+      .select(['stage'])
+      .executeTakeFirst();
+
+    if (!batch) {
+      res.status(404).json({ message: 'Batch not found' });
+      return;
+    }
+
+    const user = await db.selectFrom('users')
+      .where('id', '=', userId!)
+      .select('name')
+      .executeTakeFirst();
+
+    const updatedBatch = await db
+      .updateTable('roadmap_batches')
+      .set({
+        stage,
+        notes: notes || batch.stage,
+        updated_at: new Date().toISOString(),
+      })
+      .where('id', '=', batchId)
+      .where('user_id', '=', userId!)
+      .returningAll()
+      .executeTakeFirstOrThrow();
+
+    await db.insertInto('roadmap_history')
+      .values({
+        batch_id: batchId,
+        from_stage: batch.stage,
+        to_stage: stage,
+        changed_by: user?.name || 'System',
+        changed_at: new Date().toISOString(),
+        notes: notes || '',
+      })
+      .execute();
+
+    res.json(updatedBatch);
+  } catch (err) {
+    console.error('Failed to update batch:', err);
+    res.status(500).json({ message: 'Failed to update batch' });
+  }
 });
 
 

@@ -6,6 +6,7 @@ import { HomePage } from '@/pages/HomePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { SignupPage } from '@/pages/SignupPage';
 import { DashboardPage } from '@/pages/DashboardPage';
+import { RoadmapPage } from '@/pages/RoadmapPage';
 import { Navbar } from '@/components/Navbar';
 import { AIDetectionPage } from '@/pages/AIDetectionPage';
 
@@ -42,6 +43,7 @@ function AppRoutes() {
       <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/dashboard" />} />
       <Route path="/signup" element={!user ? <SignupPage /> : <Navigate to="/dashboard" />} />
       <Route path="/dashboard" element={user ? <DashboardPage /> : <Navigate to="/login" />} />
+      <Route path="/roadmap" element={user ? <RoadmapPage /> : <Navigate to="/login" />} />
       <Route path="/ai-detection" element={user ? <AIDetectionPage /> : <Navigate to="/login" />} />
     </Routes>
   );
